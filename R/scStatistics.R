@@ -254,7 +254,7 @@ cellsPlot <- function(cell.manifest, plot.type = "histogram") {
             theme(legend.position = "bottom")
 
     }else if(plot.type == "rankplot"){
-        tmp.df <- cell.manifest[order(cell.manifest["nUMI"], decreasing = TRUE),]
+        tmp.df <- cell.manifest[order(cell.manifest[,"nUMI"], decreasing = TRUE),]
         xi <- 1:dim(tmp.df)[1]
         tmp.df$xi = xi
         p <- ggplot(tmp.df, aes(x = xi, y = nUMI, color = droplet.type)) +

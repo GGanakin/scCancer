@@ -134,6 +134,9 @@ runScCombination <- function(single.savePaths, sampleNames, savePath, combName,
         # for(s.name in names(expr.list)){
         #     expr.list[[s.name]] <- GetAssayData(expr.list[[s.name]], slot = "counts")[share.genes, ]
         # }
+        for(s.name in names(expr.list)){
+              expr.list[[s.name]] <- GetAssayData(expr.list[[s.name]], slot = "counts")
+        }
         comb.data <- do.call(cbind, expr.list)
         rm(expr.list)
 

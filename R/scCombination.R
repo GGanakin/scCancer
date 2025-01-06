@@ -130,10 +130,10 @@ runScCombination <- function(single.savePaths, sampleNames, savePath, combName,
         names(comb.metadata) <- items[rowSums(ju.mat) == 0]
         comb.metadata <- data.frame(comb.metadata)
 
-        share.genes <- Reduce(intersect,  lapply(expr.list, rownames))
-        for(s.name in names(expr.list)){
-            expr.list[[s.name]] <- GetAssayData(expr.list[[s.name]], slot = "counts")[share.genes, ]
-        }
+        # share.genes <- Reduce(intersect,  lapply(expr.list, rownames))
+        # for(s.name in names(expr.list)){
+        #     expr.list[[s.name]] <- GetAssayData(expr.list[[s.name]], slot = "counts")[share.genes, ]
+        # }
         comb.data <- do.call(cbind, expr.list)
         rm(expr.list)
 

@@ -137,42 +137,83 @@ runScCombination <- function(single.savePaths, sampleNames, savePath, combName,
         for(s.name in names(expr.list)){
               expr.list[[s.name]] <- GetAssayData(expr.list[[s.name]], slot = "counts")
         }
-        all_rownames <- unique(unlist(lapply(expr.list, rownames)))
-        cat("唯一基因数：", length(all_rownames), "\n")
-
+        collect_rownames <- function(expr_list) {
+          # 使用 data.table 加速去重
+          all_rows_dt <- data.table(rowname = unlist(lapply(expr_list, rownames), use.names = FALSE))
+          unique_rows <- unique(all_rows_dt)[[1]]
+          cat("唯一行数：", length(unique_rows), "\n")
+          return(unique_rows)
+        }
+        all_rownames <- collect_rownames(expr.list)
         #缺失值填充为 0
         extend_sparse_matrix <- function(mat, all_rows) {
           current_rows <- rownames(mat)
           current_cols <- colnames(mat)
+          
           new_mat <- Matrix(0, nrow = length(all_rows), ncol = ncol(mat), sparse = TRUE)
           rownames(new_mat) <- all_rows
           colnames(new_mat) <- current_cols
+          
           match_rows <- match(current_rows, all_rows)
-          for (i in seq_along(current_rows)) {
-            if (!is.na(match_rows[i])) {
-              new_mat[match_rows[i], ] <- mat[i, ]
-            }
+          valid_idx <- which(!is.na(match_rows))
+          if (length(valid_idx) > 0) {
+            new_mat[match_rows[valid_idx], ] <- mat[valid_idx, ]
           }
-          cat("expr(cols：", current_cols, ")type：", class(new_mat), ", rows：", nrow(new_mat), "\n")       
           return(new_mat)
         }
+       # 步骤3：并行扩展矩阵
+        n_cores <- detectCores() - 1  # 使用可用核心数减 1
+        cat("使用核心数：", n_cores, "\n")
+        extended_mats <- mclapply(expr.list, extend_sparse_matrix, all_rows = all_rownames, mc.cores = n_cores)
 
-        # 步骤3：扩展每个稀疏矩阵
-        extended_mats <- lapply(expr.list, extend_sparse_matrix, all_rows = all_rownames)
+        # 步骤4：在合并前验证
+        cat("extended_mats 长度：", length(extended_mats), "\n")
+        if (length(extended_mats) == 0) {
+          stop("错误：extended_mats 为空！")
+        }
+        if (length(extended_mats) == 1) {
+          warning("extended_mats 只有一个矩阵，无需合并！")
+          result <- extended_mats[[1]]
+        } else {
+          # 验证行数和类型
+          row_counts <- sapply(extended_mats, nrow)
+          types <- sapply(extended_mats, class)
+          cat("扩展后矩阵的行数：", summary(row_counts), "\n")
+          cat("扩展后矩阵的类型：", unique(types), "\n")
+          if (length(unique(row_counts)) != 1) {
+            stop("错误：扩展后的矩阵行数不一致！")
+          }
+          if (any(types != "dgCMatrix")) {
+            stop("错误：某些矩阵不是 dgCMatrix 类型！")
+          }
+          
+        # 步骤5：分块合并以提高效率
+        batch_size <- 50  # 每批合并 50 个矩阵
+        n_batches <- ceiling(length(extended_mats) / batch_size)
+        cat("分块合并，批次数量：", n_batches, "\n")
         
-        # 步骤4：在合并前验证行数和类型
-        row_counts <- sapply(extended_mats, nrow)
-        cat("扩展后矩阵的行数：", row_counts, "\n")
-        types <- sapply(extended_mats, class)
-        cat("扩展后矩阵的类型：", types, "\n")
-        if (length(unique(row_counts)) != 1) {
-          stop("错误：扩展后的矩阵行数不一致！")
+        result <- NULL
+        for (i in 1:n_batches) {
+          start_idx <- (i - 1) * batch_size + 1
+          end_idx <- min(i * batch_size, length(extended_mats))
+          batch_mats <- extended_mats[start_idx:end_idx]
+          
+          # 使用 do.call(cbind, ...) 合并批次内的矩阵
+          batch_result <- do.call(cbind, batch_mats)
+          
+          # 与已有结果合并
+          if (is.null(result)) {
+            comb.data <- batch_result
+          } else {
+            comb.data <- cbind(comb.data, batch_result)
+          }
+          
+          # 清理内存
+          rm(batch_mats, batch_result)
+          gc()
         }
-        if (any(types != "dgCMatrix")) {
-          stop("错误：某些矩阵不是 dgCMatrix 类型！")
-        }
-        extended_mats <- mclapply(expr.list, extend_sparse_matrix, all_rows = all_rownames, mc.cores = 16)
-        # 步骤5：合并扩展后的矩阵
+      }
+
         comb.data <- do.call(cbind, expr.list)
         rm(expr.list)
         rm(extended_mats)

@@ -43,6 +43,7 @@ Imports:
     reshape2,
     scds,
     parallel,
+    data.table,
     Seurat (>= 3.0),
     SingleCellExperiment,
     SoupX,

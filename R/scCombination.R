@@ -137,14 +137,7 @@ runScCombination <- function(single.savePaths, sampleNames, savePath, combName,
         for(s.name in names(expr.list)){
               expr.list[[s.name]] <- GetAssayData(expr.list[[s.name]], slot = "counts")
         }
-        collect_rownames <- function(expr_list) {
-          # 使用 data.table 加速去重
-          all_rows_dt <- data.table(rowname = unlist(lapply(expr_list, rownames), use.names = FALSE))
-          unique_rows <- unique(all_rows_dt)[[1]]
-          cat("唯一行数：", length(unique_rows), "\n")
-          return(unique_rows)
-        }
-        all_rownames <- collect_rownames(expr.list)
+        all_rownames <- unique(unlist(lapply(expr.list, rownames)))
         #缺失值填充为 0
         extend_sparse_matrix <- function(mat, all_rows) {
           current_rows <- rownames(mat)

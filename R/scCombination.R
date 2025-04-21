@@ -137,8 +137,45 @@ runScCombination <- function(single.savePaths, sampleNames, savePath, combName,
         for(s.name in names(expr.list)){
               expr.list[[s.name]] <- GetAssayData(expr.list[[s.name]], slot = "counts")
         }
+        all_rownames <- unique(unlist(lapply(expr.list, rownames)))
+        cat("唯一基因数：", length(all_rownames), "\n")
+
+        #缺失值填充为 0
+        extend_sparse_matrix <- function(mat, all_rows) {
+          current_rows <- rownames(mat)
+          current_cols <- colnames(mat)
+          new_mat <- Matrix(0, nrow = length(all_rows), ncol = ncol(mat), sparse = TRUE)
+          rownames(new_mat) <- all_rows
+          colnames(new_mat) <- current_cols
+          match_rows <- match(current_rows, all_rows)
+          for (i in seq_along(current_rows)) {
+            if (!is.na(match_rows[i])) {
+              new_mat[match_rows[i], ] <- mat[i, ]
+            }
+          }
+          cat("expr(cols：", current_cols, ")type：", class(new_mat), ", rows：", nrow(new_mat), "\n")       
+          return(new_mat)
+        }
+
+        # 步骤3：扩展每个稀疏矩阵
+        extended_mats <- lapply(expr.list, extend_sparse_matrix, all_rows = all_rownames)
+        
+        # 步骤4：在合并前验证行数和类型
+        row_counts <- sapply(extended_mats, nrow)
+        cat("扩展后矩阵的行数：", row_counts, "\n")
+        types <- sapply(extended_mats, class)
+        cat("扩展后矩阵的类型：", types, "\n")
+        if (length(unique(row_counts)) != 1) {
+          stop("错误：扩展后的矩阵行数不一致！")
+        }
+        if (any(types != "dgCMatrix")) {
+          stop("错误：某些矩阵不是 dgCMatrix 类型！")
+        }
+        extended_mats <- mclapply(expr.list, extend_sparse_matrix, all_rows = all_rownames, mc.cores = 16)
+        # 步骤5：合并扩展后的矩阵
         comb.data <- do.call(cbind, expr.list)
         rm(expr.list)
+        rm(extended_mats)
 
         expr <- CreateSeuratObject(counts = comb.data,  min.cells = 5) %>%
             Seurat::NormalizeData(verbose = FALSE) %>%

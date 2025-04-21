@@ -187,34 +187,34 @@ runScCombination <- function(single.savePaths, sampleNames, savePath, combName,
             stop("错误：某些矩阵不是 dgCMatrix 类型！")
           }
           
-        # 步骤5：分块合并以提高效率
-        batch_size <- 50  # 每批合并 50 个矩阵
-        n_batches <- ceiling(length(extended_mats) / batch_size)
-        cat("分块合并，批次数量：", n_batches, "\n")
-        
-        result <- NULL
-        for (i in 1:n_batches) {
-          start_idx <- (i - 1) * batch_size + 1
-          end_idx <- min(i * batch_size, length(extended_mats))
-          batch_mats <- extended_mats[start_idx:end_idx]
+          # 步骤5：分块合并以提高效率
+          batch_size <- 50  # 每批合并 50 个矩阵
+          n_batches <- ceiling(length(extended_mats) / batch_size)
+          cat("分块合并，批次数量：", n_batches, "\n")
           
-          # 使用 do.call(cbind, ...) 合并批次内的矩阵
-          batch_result <- do.call(cbind, batch_mats)
-          
-          # 与已有结果合并
-          if (is.null(result)) {
-            comb.data <- batch_result
-          } else {
-            comb.data <- cbind(comb.data, batch_result)
+          result <- NULL
+          for (i in 1:n_batches) {
+            start_idx <- (i - 1) * batch_size + 1
+            end_idx <- min(i * batch_size, length(extended_mats))
+            batch_mats <- extended_mats[start_idx:end_idx]
+            
+            # 使用 do.call(cbind, ...) 合并批次内的矩阵
+            batch_result <- do.call(cbind, batch_mats)
+            
+            # 与已有结果合并
+            if (is.null(result)) {
+              comb.data <- batch_result
+            } else {
+              comb.data <- cbind(comb.data, batch_result)
+            }
+            
+            # 清理内存
+            rm(batch_mats, batch_result)
+            gc()
           }
-          
-          # 清理内存
-          rm(batch_mats, batch_result)
-          gc()
         }
-      }
 
-        comb.data <- do.call(cbind, expr.list)
+        # comb.data <- do.call(cbind, expr.list)
         rm(expr.list)
         rm(extended_mats)
 

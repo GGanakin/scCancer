@@ -181,7 +181,7 @@ runScCombination <- function(single.savePaths, sampleNames, savePath, combName,
           }
           
           # 步骤5：分块合并以提高效率
-          batch_size <- 50  # 每批合并 50 个矩阵
+          batch_size <- 500  # 每批合并 50 个矩阵
           n_batches <- ceiling(length(extended_mats) / batch_size)
           cat("分块合并，批次数量：", n_batches, "\n")
           

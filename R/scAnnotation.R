@@ -336,7 +336,7 @@ runSeurat <- function(expr,
     # cell.annotation$Cluster <- factor(expr@meta.data[[clusterStashName]],
     #                                   levels = 0:(length(unique(expr@meta.data[[clusterStashName]]))-1))
     cell.annotation$Cluster <- factor(expr@meta.data[[clusterStashName]])
-
+    saveRDS(expr,"temp.RDS")
     return(list(expr = expr,
                 diff.expr.genes = diff.expr.genes,
                 cell.annotation = cell.annotation))

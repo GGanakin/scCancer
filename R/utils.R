@@ -390,10 +390,7 @@ getDefaultColors <- function(n = NULL, type = 1){
         if(n <= length(colors)){
             colors <- colors[1:n]
         }else{
-            step <- 16777200 %/% (n - length(colors)) - 2
-            add.colors <- paste0("#", as.hexmode(seq(from = sample(1:step, 1),
-                                                     by = step, length.out = (n-length(colors)))))
-            colors <- c(colors, add.colors)
+           colorRampPalette(colors)(n)
         }
     }
     return(colors)
